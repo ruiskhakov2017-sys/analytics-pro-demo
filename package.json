@@ -1,0 +1,1 @@
+{"name":"analytics-pro-demo","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"node tools/server.js","build":"node tools/build.js","test":"node --test"},"engines":{"node":">=20"}}
