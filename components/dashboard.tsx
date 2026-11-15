@@ -473,7 +473,7 @@ export default function Dashboard() {
                                 </label>
                                 <label>
                                   Качество
-                                  <select name="quality">
+                                  <select name="quality" aria-label="Качество">
                                     <option>Не оценено</option>
                                     <option>Высокое</option>
                                     <option>Стандартное</option>
