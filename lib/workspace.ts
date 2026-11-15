@@ -39,7 +39,7 @@ export async function workspace(create = false) {
       },
       transactions: {
         create: [
-          { title: "Доход демокампаний", kind: "income", amount: 2712000 },
+          { title: "Доход рекламных кампаний", kind: "income", amount: 2712000 },
           { title: "Рекламный бюджет", kind: "expense", amount: 1640000 },
         ],
       },
