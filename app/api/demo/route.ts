@@ -146,6 +146,29 @@ export async function POST(req: NextRequest) {
         return true;
       });
       if (!found) return response({ error: "Аккаунт не найден" }, 404);
+    } else if (body.action === "transaction-edit") {
+      if (typeof body.data?.id !== "string" || body.data.id.length > 100)
+        return response({ error: "Некорректная операция" }, 400);
+      const { id: operationId, ...values } = body.data;
+      const data = transactionInput.parse(values);
+      const found = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id = ${id} FOR UPDATE`;
+        const row = await tx.transaction.findFirst({
+          where: { id: operationId, workspaceId: id },
+        });
+        if (!row) return false;
+        await tx.transaction.update({ where: { id: operationId }, data });
+        await tx.auditEvent.create({
+          data: {
+            workspaceId: id,
+            action: "Изменена операция",
+            title: data.title,
+            amount: data.amount,
+          },
+        });
+        return true;
+      });
+      if (!found) return response({ error: "Операция не найдена" }, 404);
     } else if (body.action === "transaction-delete") {
       if (typeof body.data?.id !== "string" || body.data.id.length > 100)
         return response({ error: "Некорректная операция" }, 400);

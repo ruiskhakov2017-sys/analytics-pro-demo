@@ -37,6 +37,17 @@ test("finance operations persist in their department and update totals", async (
   page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", {
+      name: "Изменить Проверка расходов фарма",
+      exact: true,
+    })
+    .click();
+  await page.getByLabel("Сумма, USD", { exact: true }).fill("15.75");
+  await page
+    .getByRole("button", { name: "Сохранить изменения", exact: true })
+    .click();
+  await expect(page.locator(".metrics article").nth(1)).toContainText("15,75");
+  await page
+    .getByRole("button", {
       name: "Удалить Проверка расходов фарма",
       exact: true,
     })
@@ -57,5 +68,5 @@ test("finance operations persist in their department and update totals", async (
   ).toBeVisible();
   await expect(
     page.getByRole("cell", { name: "Проверка расходов фарма", exact: true }),
-  ).toHaveCount(2);
+  ).toHaveCount(3);
 });

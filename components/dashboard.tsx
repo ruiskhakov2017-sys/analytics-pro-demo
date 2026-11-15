@@ -16,6 +16,7 @@ import {
 import { summarize, insights, statuses } from "@/lib/domain";
 import { AccountAnalytics } from "./account-analytics";
 import { MediaAnalytics } from "./media-analytics";
+import { TransactionEditor } from "./transaction-editor";
 type Account = {
   history: {
     id: string;
@@ -643,6 +644,7 @@ export default function Dashboard() {
                             <th>Тип</th>
                             <th>Сумма</th>
                             <th>Действия</th>
+                            <th>Удаление</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -658,6 +660,9 @@ export default function Dashboard() {
                                 {t.kind === "income" ? "Доход" : "Расход"}
                               </td>
                               <td>{money(t.amount)}</td>
+                              <td>
+                                <TransactionEditor row={t} onSaved={refresh} />
+                              </td>
                               <td>
                                 <button
                                   className="text-button"
