@@ -14,6 +14,9 @@ export const transactionInput = z
   .object({
     title: z.string().trim().min(2).max(100),
     kind: z.enum(["income", "expense"]),
+    department: z
+      .enum(["GENERAL", "FARMING", "MEDIABUYING"])
+      .default("GENERAL"),
     amount: z.number().int().min(1).max(100_000_000),
   })
   .strict();

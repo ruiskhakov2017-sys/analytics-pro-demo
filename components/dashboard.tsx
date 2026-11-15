@@ -31,6 +31,7 @@ type Transaction = {
   id: string;
   title: string;
   kind: string;
+  department: string;
   amount: number;
   createdAt: string;
 };
@@ -58,6 +59,7 @@ export default function Dashboard() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Account | null>(null);
   const [accountTab, setAccountTab] = useState("all");
+  const [financeTab, setFinanceTab] = useState("ALL");
   async function refresh() {
     const r = await fetch("/api/demo", { cache: "no-store" });
     const body = await r.json();
@@ -112,6 +114,7 @@ export default function Dashboard() {
       void mutate("transaction", {
         title: fields.get("title"),
         kind: fields.get("kind"),
+        department: fields.get("department"),
         amount: Math.round(Number(fields.get("amount")) * 100),
       });
     else
@@ -121,7 +124,12 @@ export default function Dashboard() {
         owner: fields.get("owner"),
       });
   }
-  const summary = summarize(data.transactions);
+  const financeRows = data.transactions.filter(
+    (t) => financeTab === "ALL" || t.department === financeTab,
+  );
+  const summary = summarize(
+    page === "finance" ? financeRows : data.transactions,
+  );
   const visible = data.accounts.filter(
     (a) =>
       (page !== "buying" || a.status === "В работе") &&
@@ -396,6 +404,23 @@ export default function Dashboard() {
                                     required
                                   />
                                 </label>
+                                <label>
+                                  Отдел
+                                  <select
+                                    name="department"
+                                    defaultValue={
+                                      financeTab === "ALL"
+                                        ? "GENERAL"
+                                        : financeTab
+                                    }
+                                  >
+                                    <option value="GENERAL">Общее</option>
+                                    <option value="FARMING">Фарминг</option>
+                                    <option value="MEDIABUYING">
+                                      Медиабаинг
+                                    </option>
+                                  </select>
+                                </label>
                               </>
                             ) : (
                               <>
@@ -458,6 +483,27 @@ export default function Dashboard() {
                       ))}
                     </div>
                   )}
+                  {page === "finance" && (
+                    <div
+                      className="account-tabs"
+                      aria-label="Финансовые отделы"
+                    >
+                      {[
+                        ["ALL", "P&L сводка"],
+                        ["FARMING", "Фарминг"],
+                        ["MEDIABUYING", "Медиабаинг"],
+                        ["GENERAL", "Общее"],
+                      ].map(([id, label]) => (
+                        <button
+                          key={id}
+                          aria-pressed={financeTab === id}
+                          onClick={() => setFinanceTab(id)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {page === "finance" ? (
                     <div className="table-scroll">
                       <table>
@@ -470,7 +516,7 @@ export default function Dashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {data.transactions.map((t) => (
+                          {financeRows.map((t) => (
                             <tr key={t.id}>
                               <td>{t.title}</td>
                               <td>

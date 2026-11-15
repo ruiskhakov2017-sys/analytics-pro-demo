@@ -54,6 +54,7 @@ export async function GET() {
           id: true,
           title: true,
           kind: true,
+          department: true,
           amount: true,
           createdAt: true,
         },

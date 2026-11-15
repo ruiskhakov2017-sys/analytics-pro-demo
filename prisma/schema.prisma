@@ -39,6 +39,7 @@ model Transaction {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   title String
   kind String
+  department String @default("GENERAL")
   amount Int
   createdAt DateTime @default(now())
   @@index([workspaceId, createdAt])
