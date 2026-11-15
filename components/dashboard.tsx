@@ -14,6 +14,7 @@ import {
   Settings,
 } from "lucide-react";
 import { summarize, insights, statuses } from "@/lib/domain";
+import { AccountAnalytics } from "./account-analytics";
 type Account = {
   history: {
     id: string;
@@ -320,6 +321,9 @@ export default function Dashboard() {
                   </div>
                 </>
               )}
+              {page === "farming" && (
+                <AccountAnalytics accounts={data.accounts} />
+              )}
               {page === "settings" ? (
                 <section className="panel">
                   <h2>Интеграции</h2>
@@ -513,6 +517,7 @@ export default function Dashboard() {
                             <th>Дата</th>
                             <th>Тип</th>
                             <th>Сумма</th>
+                            <th>Действия</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -528,6 +533,25 @@ export default function Dashboard() {
                                 {t.kind === "income" ? "Доход" : "Расход"}
                               </td>
                               <td>{money(t.amount)}</td>
+                              <td>
+                                <button
+                                  className="text-button"
+                                  disabled={busy}
+                                  aria-label={`Удалить ${t.title}`}
+                                  onClick={() => {
+                                    if (
+                                      window.confirm(
+                                        `Удалить операцию «${t.title}»?`,
+                                      )
+                                    )
+                                      void mutate("transaction-delete", {
+                                        id: t.id,
+                                      });
+                                  }}
+                                >
+                                  Удалить
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

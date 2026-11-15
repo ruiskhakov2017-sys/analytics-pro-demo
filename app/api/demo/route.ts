@@ -121,6 +121,13 @@ export async function POST(req: NextRequest) {
         return true;
       });
       if (!found) return response({ error: "Аккаунт не найден" }, 404);
+    } else if (body.action === "transaction-delete") {
+      if (typeof body.data?.id !== "string" || body.data.id.length > 100)
+        return response({ error: "Некорректная операция" }, 400);
+      const result = await db.transaction.deleteMany({
+        where: { id: body.data.id, workspaceId: id },
+      });
+      if (!result.count) return response({ error: "Операция не найдена" }, 404);
     } else if (body.action === "transaction") {
       const data = transactionInput.parse(body.data);
       await db.$transaction(async (tx) => {
