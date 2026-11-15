@@ -81,6 +81,7 @@ export default function Dashboard() {
   const [selected, setSelected] = useState<Account | null>(null);
   const [accountTab, setAccountTab] = useState("all");
   const [financeTab, setFinanceTab] = useState("ALL");
+  const [period, setPeriod] = useState("all");
   async function refresh() {
     const r = await fetch("/api/demo", { cache: "no-store" });
     const body = await r.json();
@@ -147,12 +148,15 @@ export default function Dashboard() {
         quality: fields.get("quality"),
       });
   }
-  const financeRows = data.transactions.filter(
+  const periodRows = data.transactions.filter(
+    (t) =>
+      period === "all" ||
+      Date.now() - new Date(t.createdAt).getTime() <= Number(period) * 86400000,
+  );
+  const financeRows = periodRows.filter(
     (t) => financeTab === "ALL" || t.department === financeTab,
   );
-  const summary = summarize(
-    page === "finance" ? financeRows : data.transactions,
-  );
+  const summary = summarize(page === "finance" ? financeRows : periodRows);
   const visible = data.accounts.filter(
     (a) =>
       (page !== "buying" || a.status === "В работе") &&
@@ -166,7 +170,7 @@ export default function Dashboard() {
         .includes(query.toLowerCase()),
   );
   const daily = Object.values(
-    data.transactions.reduce<
+    periodRows.reduce<
       Record<string, { date: string; income: number; expense: number }>
     >((acc, t) => {
       const key = t.createdAt.slice(0, 10);
@@ -236,6 +240,18 @@ export default function Dashboard() {
               </h1>
               <p>От подготовки аккаунта до финансового результата.</p>
             </div>
+            <label>
+              Период операций{" "}
+              <select
+                aria-label="Период операций"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+              >
+                <option value="all">Всё время</option>
+                <option value="30">Последние 30 дней</option>
+                <option value="7">Последние 7 дней</option>
+              </select>
+            </label>
           </div>
           {error && (
             <div role="alert" className="error">
@@ -311,7 +327,7 @@ export default function Dashboard() {
                         <br />
                         Больше результата.
                       </h2>
-                      <p>{insights(data.accounts, data.transactions)[0]}</p>
+                      <p>{insights(data.accounts, periodRows)[0]}</p>
                       <button onClick={() => setPage("ai")}>
                         Разобрать показатели ↗
                       </button>
@@ -399,7 +415,7 @@ export default function Dashboard() {
                 <section className="panel">
                   <span className="eyebrow">ОПЕРАЦИОННАЯ СВОДКА</span>
                   <h2>Что важно сейчас</h2>
-                  {insights(data.accounts, data.transactions).map((text, i) => (
+                  {insights(data.accounts, periodRows).map((text, i) => (
                     <article className="insight-row" key={text}>
                       <strong>0{i + 1}</strong>
                       <p>{text}</p>
