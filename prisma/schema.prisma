@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model Workspace {
+  id        String @id
+  expiresAt DateTime
+  accounts Account[]
+  transactions Transaction[]
+  @@index([expiresAt])
+}
+model Account {
+  id String @id @default(cuid())
+  workspaceId String
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name String
+  geo String
+  owner String
+  status String @default("Прогрев")
+  createdAt DateTime @default(now())
+  @@index([workspaceId, createdAt])
+}
+model Transaction {
+  id String @id @default(cuid())
+  workspaceId String
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title String
+  kind String
+  amount Int
+  createdAt DateTime @default(now())
+  @@index([workspaceId, createdAt])
+}
