@@ -11,7 +11,14 @@ function response(data: unknown, status = 200) {
 }
 function sameOrigin(req: NextRequest) {
   const origin = req.headers.get("origin");
-  return !!origin && origin === req.nextUrl.origin;
+  if (!origin) return false;
+  try {
+    const parsed = new URL(origin);
+    return ["http:", "https:"].includes(parsed.protocol) &&
+      parsed.host === req.headers.get("host");
+  } catch {
+    return false;
+  }
 }
 export async function GET() {
   try {
