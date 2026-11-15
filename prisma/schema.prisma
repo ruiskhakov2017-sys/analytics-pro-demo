@@ -21,7 +21,17 @@ model Account {
   owner String
   status String @default("Прогрев")
   createdAt DateTime @default(now())
+  history AccountEvent[]
   @@index([workspaceId, createdAt])
+}
+model AccountEvent {
+  id String @id @default(cuid())
+  accountId String
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  previousStatus String?
+  status String
+  createdAt DateTime @default(now())
+  @@index([accountId, createdAt])
 }
 model Transaction {
   id String @id @default(cuid())

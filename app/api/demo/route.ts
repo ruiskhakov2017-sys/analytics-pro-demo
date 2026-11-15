@@ -14,8 +14,10 @@ function sameOrigin(req: NextRequest) {
   if (!origin) return false;
   try {
     const parsed = new URL(origin);
-    return ["http:", "https:"].includes(parsed.protocol) &&
-      parsed.host === req.headers.get("host");
+    return (
+      ["http:", "https:"].includes(parsed.protocol) &&
+      parsed.host === req.headers.get("host")
+    );
   } catch {
     return false;
   }
@@ -27,7 +29,23 @@ export async function GET() {
       db.account.findMany({
         where: { workspaceId: id },
         orderBy: { createdAt: "desc" },
-        select: { id: true, name: true, geo: true, owner: true, status: true },
+        select: {
+          id: true,
+          name: true,
+          geo: true,
+          owner: true,
+          status: true,
+          history: {
+            orderBy: { createdAt: "desc" },
+            take: 100,
+            select: {
+              id: true,
+              previousStatus: true,
+              status: true,
+              createdAt: true,
+            },
+          },
+        },
       }),
       db.transaction.findMany({
         where: { workspaceId: id },
@@ -75,15 +93,33 @@ export async function POST(req: NextRequest) {
         await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id = ${id} FOR UPDATE`;
         if ((await tx.account.count({ where: { workspaceId: id } })) >= 100)
           throw new Error("LIMIT");
-        await tx.account.create({ data: { ...data, workspaceId: id } });
+        await tx.account.create({
+          data: {
+            ...data,
+            workspaceId: id,
+            history: { create: { status: "Прогрев" } },
+          },
+        });
       });
     } else if (body.action === "status") {
       const { id: accountId, status } = statusInput.parse(body.data);
-      const result = await db.account.updateMany({
-        where: { id: accountId, workspaceId: id },
-        data: { status },
+      const found = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id = ${id} FOR UPDATE`;
+        const account = await tx.account.findFirst({
+          where: { id: accountId, workspaceId: id },
+        });
+        if (!account) return false;
+        if (account.status === status) return true;
+        await tx.account.update({
+          where: { id: accountId },
+          data: {
+            status,
+            history: { create: { previousStatus: account.status, status } },
+          },
+        });
+        return true;
       });
-      if (!result.count) return response({ error: "Аккаунт не найден" }, 404);
+      if (!found) return response({ error: "Аккаунт не найден" }, 404);
     } else if (body.action === "transaction") {
       const data = transactionInput.parse(body.data);
       await db.$transaction(async (tx) => {

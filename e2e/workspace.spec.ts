@@ -17,6 +17,12 @@ test("accounts persist and are isolated between visitors", async ({
   await expect(
     page.getByText("Isolated account", { exact: true }),
   ).toBeVisible();
+  await page.getByRole("combobox", {name:"Статус Isolated account", exact:true}).selectOption("Готов");
+  await expect(page.getByRole("combobox", {name:"Статус Isolated account", exact:true})).toBeEnabled();
+  await page.getByRole("button", {name:"Isolated account", exact:true}).click();
+  await expect(page.getByText("Прогрев → Готов", {exact:true})).toBeVisible();
+  await expect(page.getByText("Создан: Прогрев", {exact:true})).toBeVisible();
+  await page.getByRole("button", {name:"Закрыть", exact:true}).click();
   const other = await browser.newContext();
   try {
     const second = await other.newPage();

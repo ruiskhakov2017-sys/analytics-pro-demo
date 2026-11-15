@@ -1,4 +1,85 @@
 @import "tailwindcss";
+.account-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0;
+}
+.account-tabs button {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.account-tabs button[aria-pressed="true"] {
+  background: var(--soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.application[data-theme="dark"] {
+  --bg: #121029;
+  --surface: #201a3e;
+  --ink: #fff5fe;
+  --muted: #bcb0db;
+  --line: #3f3264;
+  --accent: #fb75c2;
+  --soft: #542644;
+}
+.application[data-theme="dark"] .insight {
+  background: linear-gradient(135deg, #662bf1, #bd266f);
+}
+.application[data-theme="dark"] .metrics article:nth-child(3) {
+  background: #d8ff56;
+  color: #17210c;
+}
+.application[data-theme="dark"] .metrics article:nth-child(3) span,
+.application[data-theme="dark"] .metrics article:nth-child(3) small {
+  color: #43541f;
+}
+.application[data-theme="dark"] .departments button {
+  border-top: 3px solid var(--accent);
+}
+.application[data-theme="editorial"] {
+  --bg: #f7f9fc;
+  --surface: #fff;
+  --ink: #223046;
+  --muted: #6c7a90;
+  --line: #e3e9f2;
+  --accent: #2469de;
+  --soft: #eaf2ff;
+}
+.application[data-theme="editorial"] h1 {
+  font-family: Arial, sans-serif;
+  font-size: 38px;
+  font-weight: 500;
+  letter-spacing: -1.5px;
+}
+.application[data-theme="editorial"] .insight {
+  background: linear-gradient(145deg, #edf4ff, #f8fbff);
+  border: 1px solid #d7e5f9;
+  color: #263b59;
+}
+.application[data-theme="editorial"] .insight p,
+.application[data-theme="editorial"] .insight button {
+  color: #4a6689;
+}
+.application[data-theme="editorial"] .metrics article,
+.application[data-theme="editorial"] .panel,
+.application[data-theme="editorial"] .departments button {
+  border-radius: 22px;
+  box-shadow: 0 5px 25px #243d6510;
+}
+.application[data-theme="editorial"] .departments button:nth-child(2) svg {
+  color: #d84f45;
+}
+.application[data-theme="editorial"] .departments button:nth-child(3) svg {
+  color: #b28a18;
+}
+.application[data-theme="editorial"] .departments button:nth-child(4) svg {
+  color: #26805c;
+}
 :root {
   font-family: Arial, sans-serif;
   color: #293247;

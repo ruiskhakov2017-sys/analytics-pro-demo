@@ -11,9 +11,16 @@ import {
   Sparkles,
   Plus,
   X,
+  Settings,
 } from "lucide-react";
 import { summarize, insights, statuses } from "@/lib/domain";
 type Account = {
+  history: {
+    id: string;
+    previousStatus: string | null;
+    status: string;
+    createdAt: string;
+  }[];
   id: string;
   name: string;
   geo: string;
@@ -34,6 +41,7 @@ const sections = [
   ["buying", "Медиабаинг", ArrowUpRight],
   ["finance", "Финансы", Wallet],
   ["ai", "AI-аналитика", Sparkles],
+  ["settings", "Настройки", Settings],
 ] as const;
 const money = (n: number) =>
   new Intl.NumberFormat("ru-RU", { style: "currency", currency: "USD" }).format(
@@ -49,6 +57,7 @@ export default function Dashboard() {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Account | null>(null);
+  const [accountTab, setAccountTab] = useState("all");
   async function refresh() {
     const r = await fetch("/api/demo", { cache: "no-store" });
     const body = await r.json();
@@ -116,6 +125,11 @@ export default function Dashboard() {
   const visible = data.accounts.filter(
     (a) =>
       (page !== "buying" || a.status === "В работе") &&
+      (page !== "farming" ||
+        accountTab === "all" ||
+        (accountTab === "ready" && a.status === "Готов") ||
+        (accountTab === "work" && ["Прогрев", "Проверка"].includes(a.status)) ||
+        (accountTab === "transferred" && a.status === "В работе")) &&
       `${a.name} ${a.geo} ${a.owner}`
         .toLowerCase()
         .includes(query.toLowerCase()),
@@ -138,7 +152,7 @@ export default function Dashboard() {
           <span className="logo">a↗</span>analytics <small>pro</small>
         </a>
         <div className="workspace-label">
-          NOVA WORKSPACE <span>ИЗОЛИРОВАННОЕ ДЕМО</span>
+          NOVA WORKSPACE <span>ОПЕРАЦИОННАЯ ПЛАТФОРМА</span>
         </div>
         <nav>
           {sections.map(([id, label, Icon]) => (
@@ -158,14 +172,11 @@ export default function Dashboard() {
         <div className="sidebar-note">
           <Sparkles />
           <h3>
-            Реальные действия.
+            Ясная картина.
             <br />
-            Вымышленные данные.
+            Точные решения.
           </h3>
-          <p>
-            Ваши изменения видны только в этой демосессии. Сессия действует 24
-            часа.
-          </p>
+          <p>Аккаунты, команда и финансы в одном рабочем пространстве.</p>
         </div>
       </aside>
       <div className="content">
@@ -177,9 +188,9 @@ export default function Dashboard() {
           <label>
             Концепция{" "}
             <select value={theme} onChange={(e) => setTheme(e.target.value)}>
-              <option value="light">01 · Light</option>
-              <option value="dark">02 · Dark</option>
-              <option value="editorial">03 · Studio</option>
+              <option value="light">01 · Minimal</option>
+              <option value="dark">02 · Drive</option>
+              <option value="editorial">03 · Luxury</option>
             </select>
           </label>
         </header>
@@ -194,7 +205,6 @@ export default function Dashboard() {
               </h1>
               <p>От подготовки аккаунта до финансового результата.</p>
             </div>
-            <span className="demo-pill">● ДЕМОСРЕДА</span>
           </div>
           {error && (
             <div role="alert" className="error">
@@ -221,7 +231,7 @@ export default function Dashboard() {
                   <article key={label}>
                     <span>{label}</span>
                     <strong>{value}</strong>
-                    <small>Все операции демосессии</small>
+                    <small>Все сохранённые операции</small>
                   </article>
                 ))}
               </div>
@@ -278,7 +288,7 @@ export default function Dashboard() {
                   </div>
                   <h2 className="section-title">Направления</h2>
                   <div className="departments">
-                    {sections.slice(1).map(([id, label, Icon], i) => (
+                    {sections.slice(1, 5).map(([id, label, Icon], i) => (
                       <motion.button
                         whileHover={{ y: -4 }}
                         key={id}
@@ -302,11 +312,22 @@ export default function Dashboard() {
                   </div>
                 </>
               )}
-              {page === "ai" ? (
+              {page === "settings" ? (
                 <section className="panel">
-                  <span className="eyebrow">
-                    ПРАВИЛА И РАСЧЁТЫ · НЕ ГЕНЕРАЦИЯ AI
-                  </span>
+                  <h2>Интеграции</h2>
+                  <p>Состояние подключений рабочего пространства.</p>
+                  {["Google Ads", "Airtable", "Почта", "AI-провайдер"].map(
+                    (name) => (
+                      <div className="insight-row" key={name}>
+                        <h3>{name}</h3>
+                        <span className="muted">Не подключено</span>
+                      </div>
+                    ),
+                  )}
+                </section>
+              ) : page === "ai" ? (
+                <section className="panel">
+                  <span className="eyebrow">ОПЕРАЦИОННАЯ СВОДКА</span>
                   <h2>Что важно сейчас</h2>
                   {insights(data.accounts, data.transactions).map((text, i) => (
                     <article className="insight-row" key={text}>
@@ -314,10 +335,6 @@ export default function Dashboard() {
                       <p>{text}</p>
                     </article>
                   ))}
-                  <p className="muted">
-                    Внешняя языковая модель не подключена. Эти выводы
-                    вычисляются из текущих данных.
-                  </p>
                 </section>
               ) : (
                 <section className="panel">
@@ -346,7 +363,7 @@ export default function Dashboard() {
                               : "Новый аккаунт"}
                           </Dialog.Title>
                           <Dialog.Description>
-                            Данные сохранятся только в вашем демонстрационном
+                            Заполните поля для сохранения в рабочем
                             пространстве.
                           </Dialog.Description>
                           <form onSubmit={submit}>
@@ -423,6 +440,24 @@ export default function Dashboard() {
                       </Dialog.Portal>
                     </Dialog.Root>
                   </div>
+                  {page === "farming" && (
+                    <div className="account-tabs" aria-label="Группы аккаунтов">
+                      {[
+                        ["all", "Все аккаунты"],
+                        ["work", "В работе фарма"],
+                        ["ready", "Готовы к передаче"],
+                        ["transferred", "Переданы"],
+                      ].map(([id, label]) => (
+                        <button
+                          key={id}
+                          aria-pressed={accountTab === id}
+                          onClick={() => setAccountTab(id)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {page === "finance" ? (
                     <div className="table-scroll">
                       <table>
@@ -535,9 +570,7 @@ export default function Dashboard() {
               )}
             </>
           )}
-          <footer>
-            Analytics Pro · Портфолио-продукт · Только вымышленные данные
-          </footer>
+          <footer>Analytics Pro · Рабочее пространство</footer>
         </main>
       </div>
       <Dialog.Root
@@ -550,12 +583,30 @@ export default function Dashboard() {
           <Dialog.Overlay className="overlay" />
           <Dialog.Content className="modal">
             <Dialog.Title>{selected?.name}</Dialog.Title>
-            <Dialog.Description>
-              Карточка демонстрационного аккаунта
-            </Dialog.Description>
+            <Dialog.Description>Карточка аккаунта</Dialog.Description>
             <p>География: {selected?.geo}</p>
             <p>Ответственный: {selected?.owner}</p>
             <p>Этап: {selected?.status}</p>
+            <h3>История аккаунта</h3>
+            <p className="muted">Последние 100 событий</p>
+            {selected?.history.length ? (
+              selected.history.map((event) => (
+                <div className="insight-row" key={event.id}>
+                  <div>
+                    <p>
+                      {event.previousStatus
+                        ? `${event.previousStatus} → ${event.status}`
+                        : `Создан: ${event.status}`}
+                    </p>
+                    <time className="muted" dateTime={event.createdAt}>
+                      {new Date(event.createdAt).toLocaleString("ru-RU")}
+                    </time>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p>Изменения ещё не зарегистрированы.</p>
+            )}
             <Dialog.Close className="close" aria-label="Закрыть">
               <X />
             </Dialog.Close>
