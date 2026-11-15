@@ -11,6 +11,7 @@ model Workspace {
   accounts Account[]
   transactions Transaction[]
   templates FinanceTemplate[]
+  audit AuditEvent[]
   @@index([expiresAt])
 }
 model Account {
@@ -54,6 +55,16 @@ model FinanceTemplate {
   title String
   kind String
   department String
+  amount Int
+  createdAt DateTime @default(now())
+  @@index([workspaceId, createdAt])
+}
+model AuditEvent {
+  id String @id @default(cuid())
+  workspaceId String
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  action String
+  title String
   amount Int
   createdAt DateTime @default(now())
   @@index([workspaceId, createdAt])

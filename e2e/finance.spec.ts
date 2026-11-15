@@ -45,4 +45,17 @@ test("finance operations persist in their department and update totals", async (
     page.getByText("Проверка расходов фарма", { exact: true }),
   ).toHaveCount(0);
   await expect(page.locator(".metrics article").nth(1)).toContainText("0,00");
+  await page
+    .locator("nav")
+    .getByRole("button", { name: "Журнал операций", exact: true })
+    .click();
+  await expect(
+    page.getByRole("cell", { name: "Создана операция", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Удалена операция", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Проверка расходов фарма", exact: true }),
+  ).toHaveCount(2);
 });

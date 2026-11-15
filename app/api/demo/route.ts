@@ -25,7 +25,7 @@ function sameOrigin(req: NextRequest) {
 export async function GET() {
   try {
     const id = await workspace();
-    const [accounts, transactions, templates] = await Promise.all([
+    const [accounts, transactions, templates, audit] = await Promise.all([
       db.account.findMany({
         where: { workspaceId: id },
         orderBy: { createdAt: "desc" },
@@ -72,8 +72,20 @@ export async function GET() {
           amount: true,
         },
       }),
+      db.auditEvent.findMany({
+        where: { workspaceId: id },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        select: {
+          id: true,
+          action: true,
+          title: true,
+          amount: true,
+          createdAt: true,
+        },
+      }),
     ]);
-    return response({ accounts, transactions, templates });
+    return response({ accounts, transactions, templates, audit });
   } catch (e) {
     return response(
       {
@@ -137,10 +149,24 @@ export async function POST(req: NextRequest) {
     } else if (body.action === "transaction-delete") {
       if (typeof body.data?.id !== "string" || body.data.id.length > 100)
         return response({ error: "Некорректная операция" }, 400);
-      const result = await db.transaction.deleteMany({
-        where: { id: body.data.id, workspaceId: id },
+      const found = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id = ${id} FOR UPDATE`;
+        const row = await tx.transaction.findFirst({
+          where: { id: body.data.id, workspaceId: id },
+        });
+        if (!row) return false;
+        await tx.transaction.delete({ where: { id: row.id } });
+        await tx.auditEvent.create({
+          data: {
+            workspaceId: id,
+            action: "Удалена операция",
+            title: row.title,
+            amount: row.amount,
+          },
+        });
+        return true;
       });
-      if (!result.count) return response({ error: "Операция не найдена" }, 404);
+      if (!found) return response({ error: "Операция не найдена" }, 404);
     } else if (body.action === "template") {
       const data = transactionInput.parse(body.data);
       await db.$transaction(async (tx) => {
@@ -150,6 +176,14 @@ export async function POST(req: NextRequest) {
         )
           throw new Error("LIMIT");
         await tx.financeTemplate.create({ data: { ...data, workspaceId: id } });
+        await tx.auditEvent.create({
+          data: {
+            workspaceId: id,
+            action: "Создан шаблон",
+            title: data.title,
+            amount: data.amount,
+          },
+        });
       });
     } else if (body.action === "template-apply") {
       if (typeof body.data?.id !== "string" || body.data.id.length > 100)
@@ -163,6 +197,9 @@ export async function POST(req: NextRequest) {
         if ((await tx.transaction.count({ where: { workspaceId: id } })) >= 200)
           throw new Error("LIMIT");
         const { title, kind, department, amount } = template;
+        await tx.auditEvent.create({
+          data: { workspaceId: id, action: "Применён шаблон", title, amount },
+        });
         await tx.transaction.create({
           data: { workspaceId: id, title, kind, department, amount },
         });
@@ -176,6 +213,14 @@ export async function POST(req: NextRequest) {
         if ((await tx.transaction.count({ where: { workspaceId: id } })) >= 200)
           throw new Error("LIMIT");
         await tx.transaction.create({ data: { ...data, workspaceId: id } });
+        await tx.auditEvent.create({
+          data: {
+            workspaceId: id,
+            action: "Создана операция",
+            title: data.title,
+            amount: data.amount,
+          },
+        });
       });
     } else return response({ error: "Неизвестное действие" }, 400);
     return response({ ok: true });

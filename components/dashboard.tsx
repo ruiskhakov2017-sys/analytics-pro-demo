@@ -42,6 +42,13 @@ type Data = {
   accounts: Account[];
   transactions: Transaction[];
   templates: Omit<Transaction, "createdAt">[];
+  audit: {
+    id: string;
+    action: string;
+    title: string;
+    amount: number;
+    createdAt: string;
+  }[];
 };
 const sections = [
   ["overview", "Обзор", LayoutDashboard],
@@ -50,6 +57,7 @@ const sections = [
   ["finance", "Финансы", Wallet],
   ["ai", "AI-аналитика", Sparkles],
   ["settings", "Настройки", Settings],
+  ["audit", "Журнал операций", Layers],
 ] as const;
 const money = (n: number) =>
   new Intl.NumberFormat("ru-RU", { style: "currency", currency: "USD" }).format(
@@ -60,6 +68,7 @@ export default function Dashboard() {
     accounts: [],
     transactions: [],
     templates: [],
+    audit: [],
   });
   const [page, setPage] = useState("overview");
   const [theme, setTheme] = useState("light");
@@ -336,7 +345,42 @@ export default function Dashboard() {
               {page === "farming" && (
                 <AccountAnalytics accounts={data.accounts} />
               )}
-              {page === "settings" ? (
+              {page === "audit" ? (
+                <section className="panel">
+                  <h2>Журнал финансовых изменений</h2>
+                  <p className="muted">
+                    Последние 200 событий. Удаление операции не удаляет её
+                    запись в журнале.
+                  </p>
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Время</th>
+                          <th>Действие</th>
+                          <th>Описание</th>
+                          <th>Сумма</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.audit.map((event) => (
+                          <tr key={event.id}>
+                            <td>
+                              {new Date(event.createdAt).toLocaleString(
+                                "ru-RU",
+                              )}
+                            </td>
+                            <td>{event.action}</td>
+                            <td>{event.title}</td>
+                            <td>{money(event.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {!data.audit.length && <p>Событий пока нет.</p>}
+                </section>
+              ) : page === "settings" ? (
                 <section className="panel">
                   <h2>Интеграции</h2>
                   <p>Состояние подключений рабочего пространства.</p>
