@@ -5,6 +5,10 @@ export const accountInput = z
     name: z.string().trim().min(2).max(80),
     geo: z.string().trim().min(2).max(40),
     owner: z.string().trim().min(2).max(40),
+    dailyLimit: z.number().int().min(0).max(100_000_000).default(0),
+    quality: z
+      .enum(["Не оценено", "Высокое", "Стандартное", "Риск"])
+      .default("Не оценено"),
   })
   .strict();
 export const statusInput = z

@@ -9,6 +9,8 @@ test("accounts persist and are isolated between visitors", async ({
   await page.getByLabel("Название", { exact: true }).fill("Isolated account");
   await page.getByLabel("География", { exact: true }).fill("Польша");
   await page.getByLabel("Ответственный", { exact: true }).fill("Демо");
+  await page.getByLabel("Дневной лимит, USD", {exact:true}).fill("123.45");
+  await page.getByLabel("Качество", {exact:true}).selectOption("Высокое");
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(
     page.getByText("Isolated account", { exact: true }),
@@ -36,6 +38,10 @@ test("accounts persist and are isolated between visitors", async ({
     page.getByText("Создан: Прогрев", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await page.getByRole("button", {name:"Isolated account",exact:true}).click();
+  await expect(page.getByText("Качество: Высокое", {exact:true})).toBeVisible();
+  await expect(page.getByText(/Дневной лимит:.*123,45/)).toBeVisible();
+  await page.getByRole("button", {name:"Закрыть",exact:true}).click();
   const other = await browser.newContext();
   try {
     const second = await other.newPage();

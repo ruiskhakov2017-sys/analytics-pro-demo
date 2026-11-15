@@ -13,6 +13,8 @@ type Account = {
   geo: string;
   status: string;
   history: Event[];
+  dailyLimit: number;
+  quality: string;
 };
 export function AccountAnalytics({ accounts }: { accounts: Account[] }) {
   const [tab, setTab] = useState("live");
@@ -30,6 +32,7 @@ export function AccountAnalytics({ accounts }: { accounts: Account[] }) {
           ["efficiency", "Эффективность"],
           ["quality", "Качество и проверки"],
           ["history", "История аккаунтов"],
+          ["limits", "Лимиты"],
         ].map(([id, label]) => (
           <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
             {label}
@@ -49,6 +52,37 @@ export function AccountAnalytics({ accounts }: { accounts: Account[] }) {
                 <small>Текущее состояние</small>
               </article>
             ))}
+          </div>
+        </>
+      )}
+      {tab === "limits" && (
+        <>
+          <h2>Дневные лимиты аккаунтов</h2>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Аккаунт</th>
+                  <th>Качество</th>
+                  <th>Лимит, USD</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accounts.map((a) => (
+                  <tr key={a.id}>
+                    <td>{a.name}</td>
+                    <td>{a.quality}</td>
+                    <td>
+                      {a.dailyLimit
+                        ? (a.dailyLimit / 100).toLocaleString("ru-RU", {
+                            minimumFractionDigits: 2,
+                          })
+                        : "Не задан"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}

@@ -19,6 +19,8 @@ model Account {
   name String
   geo String
   owner String
+  dailyLimit Int @default(0)
+  quality String @default("Не оценено")
   status String @default("Прогрев")
   createdAt DateTime @default(now())
   history AccountEvent[]

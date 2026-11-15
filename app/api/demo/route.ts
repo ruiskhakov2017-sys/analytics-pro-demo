@@ -34,6 +34,8 @@ export async function GET() {
           name: true,
           geo: true,
           owner: true,
+          dailyLimit: true,
+          quality: true,
           status: true,
           history: {
             orderBy: { createdAt: "desc" },

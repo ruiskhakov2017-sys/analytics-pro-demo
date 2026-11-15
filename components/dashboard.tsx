@@ -26,6 +26,8 @@ type Account = {
   name: string;
   geo: string;
   owner: string;
+  dailyLimit: number;
+  quality: string;
   status: string;
 };
 type Transaction = {
@@ -123,6 +125,8 @@ export default function Dashboard() {
         name: fields.get("name"),
         geo: fields.get("geo"),
         owner: fields.get("owner"),
+        dailyLimit: Math.round(Number(fields.get("dailyLimit")) * 100),
+        quality: fields.get("quality"),
       });
   }
   const financeRows = data.transactions.filter(
@@ -455,6 +459,27 @@ export default function Dashboard() {
                                     maxLength={40}
                                   />
                                 </label>
+                                <label>
+                                  Дневной лимит, USD
+                                  <input
+                                    name="dailyLimit"
+                                    type="number"
+                                    min="0"
+                                    max="1000000"
+                                    step="0.01"
+                                    defaultValue="0"
+                                    required
+                                  />
+                                </label>
+                                <label>
+                                  Качество
+                                  <select name="quality">
+                                    <option>Не оценено</option>
+                                    <option>Высокое</option>
+                                    <option>Стандартное</option>
+                                    <option>Риск</option>
+                                  </select>
+                                </label>
                               </>
                             )}
                             {error && <p role="alert">{error}</p>}
@@ -656,6 +681,11 @@ export default function Dashboard() {
             <Dialog.Description>Карточка аккаунта</Dialog.Description>
             <p>География: {selected?.geo}</p>
             <p>Ответственный: {selected?.owner}</p>
+            <p>
+              Дневной лимит:{" "}
+              {selected?.dailyLimit ? money(selected.dailyLimit) : "Не задан"}
+            </p>
+            <p>Качество: {selected?.quality}</p>
             <p>Этап: {selected?.status}</p>
             <h3>История аккаунта</h3>
             <p className="muted">Последние 100 событий</p>
