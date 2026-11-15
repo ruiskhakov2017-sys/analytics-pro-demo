@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { summarize, insights, statuses } from "@/lib/domain";
 import { AccountAnalytics } from "./account-analytics";
+import { MediaAnalytics } from "./media-analytics";
 type Account = {
   history: {
     id: string;
@@ -342,6 +343,7 @@ export default function Dashboard() {
                   </div>
                 </>
               )}
+              {page === "buying" && <MediaAnalytics revision={data.accounts} />}
               {page === "farming" && (
                 <AccountAnalytics accounts={data.accounts} />
               )}
