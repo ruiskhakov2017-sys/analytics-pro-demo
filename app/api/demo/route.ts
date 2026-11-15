@@ -25,7 +25,7 @@ function sameOrigin(req: NextRequest) {
 export async function GET() {
   try {
     const id = await workspace();
-    const [accounts, transactions] = await Promise.all([
+    const [accounts, transactions, templates] = await Promise.all([
       db.account.findMany({
         where: { workspaceId: id },
         orderBy: { createdAt: "desc" },
@@ -61,8 +61,19 @@ export async function GET() {
           createdAt: true,
         },
       }),
+      db.financeTemplate.findMany({
+        where: { workspaceId: id },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          kind: true,
+          department: true,
+          amount: true,
+        },
+      }),
     ]);
-    return response({ accounts, transactions });
+    return response({ accounts, transactions, templates });
   } catch (e) {
     return response(
       {
@@ -130,6 +141,34 @@ export async function POST(req: NextRequest) {
         where: { id: body.data.id, workspaceId: id },
       });
       if (!result.count) return response({ error: "Операция не найдена" }, 404);
+    } else if (body.action === "template") {
+      const data = transactionInput.parse(body.data);
+      await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id = ${id} FOR UPDATE`;
+        if (
+          (await tx.financeTemplate.count({ where: { workspaceId: id } })) >= 50
+        )
+          throw new Error("LIMIT");
+        await tx.financeTemplate.create({ data: { ...data, workspaceId: id } });
+      });
+    } else if (body.action === "template-apply") {
+      if (typeof body.data?.id !== "string" || body.data.id.length > 100)
+        return response({ error: "Некорректный шаблон" }, 400);
+      const found = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id = ${id} FOR UPDATE`;
+        const template = await tx.financeTemplate.findFirst({
+          where: { id: body.data.id, workspaceId: id },
+        });
+        if (!template) return false;
+        if ((await tx.transaction.count({ where: { workspaceId: id } })) >= 200)
+          throw new Error("LIMIT");
+        const { title, kind, department, amount } = template;
+        await tx.transaction.create({
+          data: { workspaceId: id, title, kind, department, amount },
+        });
+        return true;
+      });
+      if (!found) return response({ error: "Шаблон не найден" }, 404);
     } else if (body.action === "transaction") {
       const data = transactionInput.parse(body.data);
       await db.$transaction(async (tx) => {

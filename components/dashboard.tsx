@@ -38,7 +38,11 @@ type Transaction = {
   amount: number;
   createdAt: string;
 };
-type Data = { accounts: Account[]; transactions: Transaction[] };
+type Data = {
+  accounts: Account[];
+  transactions: Transaction[];
+  templates: Omit<Transaction, "createdAt">[];
+};
 const sections = [
   ["overview", "Обзор", LayoutDashboard],
   ["farming", "Фарм-отдел", Layers],
@@ -52,7 +56,11 @@ const money = (n: number) =>
     n / 100,
   );
 export default function Dashboard() {
-  const [data, setData] = useState<Data>({ accounts: [], transactions: [] });
+  const [data, setData] = useState<Data>({
+    accounts: [],
+    transactions: [],
+    templates: [],
+  });
   const [page, setPage] = useState("overview");
   const [theme, setTheme] = useState("light");
   const [query, setQuery] = useState("");
@@ -114,7 +122,7 @@ export default function Dashboard() {
     e.preventDefault();
     const fields = new FormData(e.currentTarget);
     if (page === "finance")
-      void mutate("transaction", {
+      void mutate(fields.get("saveTemplate") ? "template" : "transaction", {
         title: fields.get("title"),
         kind: fields.get("kind"),
         department: fields.get("department"),
@@ -483,6 +491,12 @@ export default function Dashboard() {
                               </>
                             )}
                             {error && <p role="alert">{error}</p>}
+                            {page === "finance" && (
+                              <label>
+                                <input type="checkbox" name="saveTemplate" />
+                                Сохранить как шаблон, без проведения операции
+                              </label>
+                            )}
                             <button className="primary" disabled={busy}>
                               {busy ? "Сохраняем…" : "Сохранить"}
                             </button>
@@ -535,6 +549,30 @@ export default function Dashboard() {
                   )}
                   {page === "finance" ? (
                     <div className="table-scroll">
+                      <h3>Шаблоны операций</h3>
+                      {data.templates.length ? (
+                        data.templates.map((t) => (
+                          <div className="insight-row" key={t.id}>
+                            <p>
+                              {t.title} · {money(t.amount)} · {t.department}
+                            </p>
+                            <button
+                              className="text-button"
+                              disabled={busy}
+                              onClick={() =>
+                                void mutate("template-apply", { id: t.id })
+                              }
+                            >
+                              Применить {t.title}
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p>
+                          Сохраните повторяющуюся операцию как шаблон через
+                          форму добавления.
+                        </p>
+                      )}
                       <table>
                         <thead>
                           <tr>
