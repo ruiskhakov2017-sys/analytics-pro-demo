@@ -1,5 +1,5 @@
 import { test, expect } from "vitest";
-import { mediaOverview } from "../lib/analytics-adapter";
+import { banCorrelation, mediaOverview } from "../lib/analytics-adapter";
 test("original media calculations receive dollars, not cents, and only transferred accounts", () => {
   const base = {
     name: "Name",
@@ -13,4 +13,36 @@ test("original media calculations receive dollars, not cents, and only transferr
   expect(result.total).toBe(1);
   expect(result.limits.withLimit).toBe(1);
   expect(result.limits.highLimit).toBe(0);
+});
+
+test("ban correlation counts BINs and proxy providers from ban history", () => {
+  const date = new Date("2026-01-10T12:00:00Z");
+  const result = banCorrelation([
+    {
+      id: "account-1",
+      cardBin: "412345",
+      proxyProvider: "Proxy A",
+      createdAt: date,
+      history: [{ status: "Бан", createdAt: date }],
+    },
+    {
+      id: "account-2",
+      cardBin: "412345",
+      proxyProvider: "Proxy B",
+      createdAt: date,
+      history: [{ status: "Бан", createdAt: date }],
+    },
+    {
+      id: "account-3",
+      cardBin: "545454",
+      proxyProvider: "Proxy A",
+      createdAt: date,
+      history: [{ status: "Готов", createdAt: date }],
+    },
+  ]);
+
+  expect(result.bins["412345"]).toBe(2);
+  expect(result.proxies["Proxy A"]).toBe(1);
+  expect(result.proxies["Proxy B"]).toBe(1);
+  expect(result.topBins[0]).toEqual({ bin: "412345", banned: 2 });
 });

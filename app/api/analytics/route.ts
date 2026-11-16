@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
 import { workspace } from "@/lib/workspace";
 import { db } from "@/lib/db";
-import { mediaOverview } from "@/lib/analytics-adapter";
+import { banCorrelation, mediaOverview } from "@/lib/analytics-adapter";
 export async function GET() {
   try {
     const id = await workspace();
-    const accounts = await db.account.findMany({ where: { workspaceId: id } });
-    return NextResponse.json(mediaOverview(accounts), {
-      headers: { "Cache-Control": "no-store" },
+    const accounts = await db.account.findMany({
+      where: { workspaceId: id },
+      include: { history: { orderBy: { createdAt: "asc" } } },
     });
+    return NextResponse.json(
+      {
+        ...mediaOverview(accounts),
+        banCorrelation: banCorrelation(accounts),
+      },
+      {
+      headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch (e) {
     return NextResponse.json(
       { error: "Не удалось загрузить аналитику" },

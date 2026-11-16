@@ -24,12 +24,18 @@ type Account = {
     status: string;
     createdAt: string;
   }[];
+  limitHistory: { id: string; limit: number; createdAt: string }[];
   id: string;
   name: string;
   geo: string;
   owner: string;
   dailyLimit: number;
+  createdAt: string;
   quality: string;
+  proxyProvider: string;
+  cardBin: string;
+  warmupScheme: string;
+  additionalFarming: boolean;
   status: string;
 };
 type Transaction = {
@@ -49,6 +55,9 @@ type Data = {
     action: string;
     title: string;
     amount: number;
+    entityType: string;
+    oldValue: string | null;
+    newValue: string | null;
     createdAt: string;
   }[];
 };
@@ -82,12 +91,19 @@ export default function Dashboard() {
   const [selected, setSelected] = useState<Account | null>(null);
   const [accountTab, setAccountTab] = useState("all");
   const [financeTab, setFinanceTab] = useState("ALL");
+  const [auditTab, setAuditTab] = useState("all");
+  const [farmerNames, setFarmerNames] = useState<Record<string, string>>({});
   const [period, setPeriod] = useState("all");
   async function refresh() {
     const r = await fetch("/api/demo", { cache: "no-store" });
     const body = await r.json();
     if (!r.ok) throw Error(body.error);
     setData(body);
+    setSelected((current) =>
+      current
+        ? (body.accounts as Account[]).find((account) => account.id === current.id) ?? current
+        : current,
+    );
   }
   async function command(action: string, values?: unknown) {
     const r = await fetch("/api/demo", {
@@ -130,6 +146,25 @@ export default function Dashboard() {
       setBusy(false);
     }
   }
+  async function renameFarmer(from: string) {
+    const to = farmerNames[from]?.trim() ?? "";
+    if (!to || to === from) return;
+    setBusy(true);
+    setError("");
+    try {
+      await command("farmer-rename", { from, to });
+      setFarmerNames((current) => {
+        const next = { ...current };
+        delete next[from];
+        return next;
+      });
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка");
+    } finally {
+      setBusy(false);
+    }
+  }
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fields = new FormData(e.currentTarget);
@@ -147,6 +182,10 @@ export default function Dashboard() {
         owner: fields.get("owner"),
         dailyLimit: Math.round(Number(fields.get("dailyLimit")) * 100),
         quality: fields.get("quality"),
+        proxyProvider: fields.get("proxyProvider"),
+        cardBin: fields.get("cardBin"),
+        warmupScheme: fields.get("warmupScheme"),
+        additionalFarming: fields.get("additionalFarming") === "on",
       });
   }
   const periodRows = data.transactions.filter(
@@ -366,10 +405,24 @@ export default function Dashboard() {
               )}
               {page === "audit" ? (
                 <section className="panel">
-                  <h2>Журнал финансовых изменений</h2>
+                  <div className="panel-heading">
+                    <h2>Журнал операций</h2>
+                    <label>
+                      Тип события{" "}
+                      <select
+                        aria-label="Тип события журнала"
+                        value={auditTab}
+                        onChange={(event) => setAuditTab(event.target.value)}
+                      >
+                        <option value="all">Все события</option>
+                        <option value="finance">Финансы</option>
+                        <option value="account">Аккаунты</option>
+                      </select>
+                    </label>
+                  </div>
                   <p className="muted">
-                    Последние 200 событий. Удаление операции не удаляет её
-                    запись в журнале.
+                    Последние 200 событий рабочего пространства. Запись
+                    сохраняется вместе с изменением.
                   </p>
                   <div className="table-scroll">
                     <table>
@@ -378,30 +431,88 @@ export default function Dashboard() {
                           <th>Время</th>
                           <th>Действие</th>
                           <th>Описание</th>
+                          <th>Изменение</th>
                           <th>Сумма</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {data.audit.map((event) => (
-                          <tr key={event.id}>
-                            <td>
-                              {new Date(event.createdAt).toLocaleString(
-                                "ru-RU",
-                              )}
-                            </td>
-                            <td>{event.action}</td>
-                            <td>{event.title}</td>
-                            <td>{money(event.amount)}</td>
-                          </tr>
-                        ))}
+                        {data.audit
+                          .filter(
+                            (event) =>
+                              auditTab === "all" ||
+                              event.entityType === auditTab,
+                          )
+                          .map((event) => (
+                            <tr key={event.id}>
+                              <td>
+                                {new Date(event.createdAt).toLocaleString(
+                                  "ru-RU",
+                                )}
+                              </td>
+                              <td>{event.action}</td>
+                              <td>{event.title}</td>
+                              <td>
+                                {event.oldValue !== null ||
+                                event.newValue !== null
+                                  ? event.action === "Изменён лимит"
+                                    ? `${event.oldValue === null ? "—" : money(Number(event.oldValue))} → ${event.newValue === null ? "—" : money(Number(event.newValue))}`
+                                    : `${event.oldValue ?? "—"} → ${event.newValue ?? "—"}`
+                                  : "—"}
+                              </td>
+                              <td>
+                                {event.entityType === "finance"
+                                  ? money(event.amount)
+                                  : "—"}
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
-                  {!data.audit.length && <p>Событий пока нет.</p>}
+                  {!data.audit.some(
+                    (event) =>
+                      auditTab === "all" || event.entityType === auditTab,
+                  ) && <p>Событий пока нет.</p>}
                 </section>
               ) : page === "settings" ? (
                 <section className="panel">
-                  <h2>Интеграции</h2>
+                  <h2>Настройки фармеров и интеграции</h2>
+                  <h3>Ответственные</h3>
+                  <p className="muted">
+                    Переименование обновит ответственного у всех его аккаунтов.
+                  </p>
+                  {Array.from(new Set(data.accounts.map((account) => account.owner)))
+                    .sort((a, b) => a.localeCompare(b, "ru"))
+                    .map((owner) => (
+                      <div className="insight-row" key={owner}>
+                        <strong>{owner}</strong>
+                        <label>
+                          Новое имя{" "}
+                          <input
+                            aria-label={`Новое имя для ${owner}`}
+                            value={farmerNames[owner] ?? owner}
+                            maxLength={40}
+                            onChange={(event) =>
+                              setFarmerNames((current) => ({
+                                ...current,
+                                [owner]: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <button
+                          className="primary"
+                          disabled={busy || !farmerNames[owner]?.trim() || farmerNames[owner] === owner}
+                          onClick={() => void renameFarmer(owner)}
+                        >
+                          Сохранить
+                        </button>
+                      </div>
+                    ))}
+                  {data.accounts.length === 0 && (
+                    <p className="muted">Добавьте аккаунт, чтобы настроить ответственных.</p>
+                  )}
+                  <h3>Интеграции</h3>
                   <p>Состояние подключений рабочего пространства.</p>
                   {["Google Ads", "Airtable", "Почта", "AI-провайдер"].map(
                     (name) => (
@@ -550,6 +661,40 @@ export default function Dashboard() {
                                     <option>Стандартное</option>
                                     <option>Риск</option>
                                   </select>
+                                </label>
+                                <label>
+                                  Провайдер прокси
+                                  <input
+                                    name="proxyProvider"
+                                    maxLength={60}
+                                    placeholder="Например, Proxy provider"
+                                  />
+                                </label>
+                                <label>
+                                  BIN карты
+                                  <input
+                                    name="cardBin"
+                                    inputMode="numeric"
+                                    pattern="[0-9]{6,8}"
+                                    minLength={6}
+                                    maxLength={8}
+                                    placeholder="6–8 цифр"
+                                  />
+                                </label>
+                                <label>
+                                  Схема прогрева
+                                  <input
+                                    name="warmupScheme"
+                                    maxLength={100}
+                                    placeholder="Например, A"
+                                  />
+                                </label>
+                                <label className="checkbox-label">
+                                  <input
+                                    type="checkbox"
+                                    name="additionalFarming"
+                                  />
+                                  Дофарм включён
                                 </label>
                               </>
                             )}
@@ -790,7 +935,28 @@ export default function Dashboard() {
               Дневной лимит:{" "}
               {selected?.dailyLimit ? money(selected.dailyLimit) : "Не задан"}
             </p>
+            <label>
+              Новый дневной лимит, USD
+              <input
+                aria-label="Новый дневной лимит, USD"
+                type="number"
+                min="0"
+                max="1000000"
+                step="0.01"
+                defaultValue={selected ? (selected.dailyLimit / 100).toFixed(2) : "0"}
+                onBlur={(event) => {
+                  if (!selected) return;
+                  const amount = Math.round(Number(event.currentTarget.value) * 100);
+                  if (amount !== selected.dailyLimit)
+                    void mutate("limit", { id: selected.id, dailyLimit: amount });
+                }}
+              />
+            </label>
             <p>Качество: {selected?.quality}</p>
+            <p>Прокси: {selected?.proxyProvider || "Не указан"}</p>
+            <p>BIN: {selected?.cardBin || "Не указан"}</p>
+            <p>Схема прогрева: {selected?.warmupScheme || "Не указана"}</p>
+            <p>Дофарм: {selected?.additionalFarming ? "Да" : "Нет"}</p>
             <p>Этап: {selected?.status}</p>
             <h3>История аккаунта</h3>
             <p className="muted">Последние 100 событий</p>
@@ -811,6 +977,19 @@ export default function Dashboard() {
               ))
             ) : (
               <p>Изменения ещё не зарегистрированы.</p>
+            )}
+            <h3>История дневного лимита</h3>
+            {selected?.limitHistory.length ? (
+              selected.limitHistory.map((event) => (
+                <div className="insight-row" key={event.id}>
+                  <span>{money(event.limit)}</span>
+                  <time className="muted" dateTime={event.createdAt}>
+                    {new Date(event.createdAt).toLocaleString("ru-RU")}
+                  </time>
+                </div>
+              ))
+            ) : (
+              <p>История пока не накоплена.</p>
             )}
             <Dialog.Close className="close" aria-label="Закрыть">
               <X />

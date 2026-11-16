@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { workspace } from "@/lib/workspace";
-import { accountInput, statusInput, transactionInput } from "@/lib/domain";
+import {
+  accountInput,
+  farmerRenameInput,
+  limitInput,
+  statusInput,
+  transactionInput,
+} from "@/lib/domain";
 export const dynamic = "force-dynamic";
 function response(data: unknown, status = 200) {
   return NextResponse.json(data, {
@@ -32,10 +38,15 @@ export async function GET() {
         select: {
           id: true,
           name: true,
+          createdAt: true,
           geo: true,
           owner: true,
           dailyLimit: true,
           quality: true,
+          proxyProvider: true,
+          cardBin: true,
+          warmupScheme: true,
+          additionalFarming: true,
           status: true,
           history: {
             orderBy: { createdAt: "desc" },
@@ -46,6 +57,10 @@ export async function GET() {
               status: true,
               createdAt: true,
             },
+          },
+          limitHistory: {
+            orderBy: { createdAt: "asc" },
+            select: { id: true, limit: true, createdAt: true },
           },
         },
       }),
@@ -81,6 +96,9 @@ export async function GET() {
           action: true,
           title: true,
           amount: true,
+          entityType: true,
+          oldValue: true,
+          newValue: true,
           createdAt: true,
         },
       }),
@@ -113,20 +131,106 @@ export async function POST(req: NextRequest) {
       return response({ ok: true });
     }
     const id = await workspace();
-    if (body.action === "account") {
+    if (body.action === "farmer-rename") {
+      const { from, to } = farmerRenameInput.parse(body.data);
+      if (from === to) return response({ ok: true });
+      const result = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id = ${id} FOR UPDATE`;
+        const sourceCount = await tx.account.count({
+          where: { workspaceId: id, owner: from },
+        });
+        if (!sourceCount) return "NOT_FOUND";
+        if (
+          await tx.account.count({ where: { workspaceId: id, owner: to } })
+        )
+          return "CONFLICT";
+        await tx.account.updateMany({
+          where: { workspaceId: id, owner: from },
+          data: { owner: to },
+        });
+        await tx.auditEvent.create({
+          data: {
+            workspaceId: id,
+            action: "Переименован фармер",
+            title: from,
+            amount: 0,
+            entityType: "account",
+            oldValue: from,
+            newValue: to,
+          },
+        });
+        return "OK";
+      });
+      if (result === "NOT_FOUND")
+        return response({ error: "Ответственный не найден" }, 404);
+      if (result === "CONFLICT")
+        return response({ error: "Такое имя уже используется" }, 409);
+    } else if (body.action === "account") {
       const data = accountInput.parse(body.data);
       await db.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id = ${id} FOR UPDATE`;
         if ((await tx.account.count({ where: { workspaceId: id } })) >= 100)
           throw new Error("LIMIT");
-        await tx.account.create({
+        const account = await tx.account.create({
           data: {
             ...data,
             workspaceId: id,
             history: { create: { status: "Прогрев" } },
+            ...(data.dailyLimit > 0
+              ? { limitHistory: { create: { limit: data.dailyLimit } } }
+              : {}),
+          },
+        });
+        await tx.auditEvent.create({
+          data: {
+            workspaceId: id,
+            action: "Создан аккаунт",
+            title: account.name,
+            amount: 0,
+            entityType: "account",
+            newValue: account.status,
           },
         });
       });
+    } else if (body.action === "limit") {
+      const { id: accountId, dailyLimit } = limitInput.parse(body.data);
+      const found = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Workspace" WHERE id = ${id} FOR UPDATE`;
+        const account = await tx.account.findFirst({
+          where: { id: accountId, workspaceId: id },
+          select: { id: true, dailyLimit: true },
+        });
+        if (!account) return false;
+        if (account.dailyLimit === dailyLimit) return true;
+        if (
+          (await tx.accountLimitEvent.count({ where: { accountId } })) >= 1000
+        )
+          throw new Error("LIMIT");
+        await tx.account.update({
+          where: { id: accountId },
+          data: {
+            dailyLimit,
+            limitHistory: { create: { limit: dailyLimit } },
+          },
+        });
+        const updatedAccount = await tx.account.findUniqueOrThrow({
+          where: { id: accountId },
+          select: { name: true },
+        });
+        await tx.auditEvent.create({
+          data: {
+            workspaceId: id,
+            action: "Изменён лимит",
+            title: updatedAccount.name,
+            amount: 0,
+            entityType: "account",
+            oldValue: String(account.dailyLimit),
+            newValue: String(dailyLimit),
+          },
+        });
+        return true;
+      });
+      if (!found) return response({ error: "Аккаунт не найден" }, 404);
     } else if (body.action === "status") {
       const { id: accountId, status } = statusInput.parse(body.data);
       const found = await db.$transaction(async (tx) => {
@@ -141,6 +245,17 @@ export async function POST(req: NextRequest) {
           data: {
             status,
             history: { create: { previousStatus: account.status, status } },
+          },
+        });
+        await tx.auditEvent.create({
+          data: {
+            workspaceId: id,
+            action: "Изменён статус",
+            title: account.name,
+            amount: 0,
+            entityType: "account",
+            oldValue: account.status,
+            newValue: status,
           },
         });
         return true;

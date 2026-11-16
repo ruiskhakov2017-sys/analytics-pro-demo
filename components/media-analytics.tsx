@@ -5,6 +5,10 @@ type Overview = {
   limits: { withLimit: number; withoutLimit: number; highLimit: number };
   problematic: { count: number };
   byFarmer: Record<string, number>;
+  banCorrelation: {
+    toxicProxies: { proxy: string; banned: number }[];
+    topBins: { bin: string; banned: number }[];
+  };
 };
 export function MediaAnalytics({ revision }: { revision: unknown }) {
   const [data, setData] = useState<Overview | null>(null);
@@ -53,6 +57,39 @@ export function MediaAnalytics({ revision }: { revision: unknown }) {
           <strong>{count}</strong>
         </div>
       ))}
+      <h3>Связки с зафиксированными банами</h3>
+      <p className="muted">
+        Число банов по текущим BIN и провайдерам прокси. Совпадение фактора не
+        доказывает, что именно он вызвал бан.
+      </p>
+      <div className="overview-grid">
+        <div>
+          <h4>Прокси-провайдеры</h4>
+          {data.banCorrelation.toxicProxies.length ? (
+            data.banCorrelation.toxicProxies.map((row) => (
+              <div className="insight-row" key={row.proxy}>
+                <span>{row.proxy}</span>
+                <strong>{row.banned}</strong>
+              </div>
+            ))
+          ) : (
+            <p>Банов с указанным провайдером пока нет.</p>
+          )}
+        </div>
+        <div>
+          <h4>BIN карт</h4>
+          {data.banCorrelation.topBins.length ? (
+            data.banCorrelation.topBins.map((row) => (
+              <div className="insight-row" key={row.bin}>
+                <span>{row.bin}</span>
+                <strong>{row.banned}</strong>
+              </div>
+            ))
+          ) : (
+            <p>Банов с указанным BIN пока нет.</p>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

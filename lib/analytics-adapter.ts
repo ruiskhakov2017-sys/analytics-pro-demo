@@ -1,6 +1,17 @@
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const legacy = require("./legacy/farmingAnalytics.cjs") as {
+  buildBanCorrelation: (input: {
+    accounts: Record<string, unknown>[];
+    rangeStart: Date;
+    rangeEnd: Date;
+    archivedStatuses: Set<string>;
+  }) => {
+    bins: Record<string, number>;
+    proxies: Record<string, number>;
+    toxicProxies: { proxy: string; banned: number }[];
+    topBins: { bin: string; banned: number }[];
+  };
   buildMediaBuyingOverview: (input: {
     accounts: Record<string, unknown>[];
     rangeStart: Date;
@@ -11,6 +22,13 @@ const legacy = require("./legacy/farmingAnalytics.cjs") as {
     problematic: { count: number };
     byFarmer: Record<string, number>;
   };
+};
+type FarmingInput = {
+  id: string;
+  cardBin: string;
+  proxyProvider: string;
+  createdAt: Date;
+  history: { status: string; createdAt: Date }[];
 };
 type Input = {
   id: string;
@@ -33,5 +51,25 @@ export function mediaOverview(accounts: Input[]) {
     })),
     rangeStart: new Date(0),
     rangeEnd: new Date("9999-01-01"),
+  });
+}
+
+export function banCorrelation(accounts: FarmingInput[]) {
+  const start = new Date(0);
+  const end = new Date("9999-01-01");
+  return legacy.buildBanCorrelation({
+    accounts: accounts.map((account) => ({
+      profileName: account.id,
+      cardBin: account.cardBin,
+      proxyProvider: account.proxyProvider,
+      createdAt: account.createdAt,
+      history: account.history.map((event) => ({
+        at: event.createdAt,
+        to: event.status,
+      })),
+    })),
+    rangeStart: start,
+    rangeEnd: end,
+    archivedStatuses: new Set(["бан", "ban"]),
   });
 }

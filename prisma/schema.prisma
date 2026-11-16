@@ -23,9 +23,14 @@ model Account {
   owner String
   dailyLimit Int @default(0)
   quality String @default("Не оценено")
+  proxyProvider String @default("")
+  cardBin String @default("")
+  warmupScheme String @default("")
+  additionalFarming Boolean @default(false)
   status String @default("Прогрев")
   createdAt DateTime @default(now())
   history AccountEvent[]
+  limitHistory AccountLimitEvent[]
   @@index([workspaceId, createdAt])
 }
 model AccountEvent {
@@ -34,6 +39,14 @@ model AccountEvent {
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
   previousStatus String?
   status String
+  createdAt DateTime @default(now())
+  @@index([accountId, createdAt])
+}
+model AccountLimitEvent {
+  id String @id @default(cuid())
+  accountId String
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  limit Int
   createdAt DateTime @default(now())
   @@index([accountId, createdAt])
 }
@@ -66,6 +79,9 @@ model AuditEvent {
   action String
   title String
   amount Int
+  entityType String @default("finance")
+  oldValue String?
+  newValue String?
   createdAt DateTime @default(now())
   @@index([workspaceId, createdAt])
 }
