@@ -70,7 +70,9 @@ test("accounts persist and are isolated between visitors", async ({
     .getByRole("combobox", { name: "Статус Isolated account", exact: true })
     .selectOption("Бан");
   await page.locator("nav").getByRole("button", { name: "Журнал операций", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Журнал операций", exact: true })).toBeVisible();
+  await expect(
+    page.locator("section.panel h2").getByText("Журнал операций", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("Создан аккаунт", { exact: true })).toBeVisible();
   await expect(page.getByText("Изменён лимит", { exact: true })).toBeVisible();
   await expect(page.getByText("Изменён статус", { exact: true })).toBeVisible();
