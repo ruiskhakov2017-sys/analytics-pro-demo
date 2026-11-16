@@ -75,7 +75,9 @@ test("accounts persist and are isolated between visitors", async ({
   ).toBeVisible();
   await expect(page.getByText("Создан аккаунт", { exact: true })).toBeVisible();
   await expect(page.getByText("Изменён лимит", { exact: true })).toBeVisible();
-  await expect(page.getByText("Изменён статус", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("cell", { name: "Изменён статус", exact: true }),
+  ).toHaveCount(2);
   await page.getByLabel("Тип события журнала", { exact: true }).selectOption("account");
   await expect(page.getByText("Изменена операция", { exact: true })).toHaveCount(0);
   await page.locator("nav").getByRole("button", { name: "Настройки", exact: true }).click();
