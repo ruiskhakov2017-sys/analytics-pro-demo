@@ -52,12 +52,16 @@ test("accounts persist and are isolated between visitors", async ({
   await page.getByLabel("Новый дневной лимит, USD", {exact:true}).fill("250");
   await page.getByLabel("Новый дневной лимит, USD", {exact:true}).press("Tab");
   await expect(page.getByText("История дневного лимита")).toBeVisible();
-  await expect(page.getByText("250,00 $")).toBeVisible();
+  await expect(
+    page.getByText(/^250,00\s+\$$/),
+  ).toBeVisible();
   await page.getByRole("button", {name:"Закрыть",exact:true}).click();
   await page.reload();
   await page.getByRole("button", {name:"Isolated account",exact:true}).click();
   await expect(page.getByText("История дневного лимита")).toBeVisible();
-  await expect(page.getByText("250,00 $")).toBeVisible();
+  await expect(
+    page.getByText(/^250,00\s+\$$/),
+  ).toBeVisible();
   await page.getByRole("button", {name:"Закрыть",exact:true}).click();
   await page.locator("nav").getByRole("button", {name:"Фарм-отдел",exact:true}).click();
   await page.getByRole("button", {name:"Лимиты",exact:true}).click();
