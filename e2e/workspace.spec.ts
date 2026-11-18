@@ -69,9 +69,12 @@ test("accounts persist and are isolated between visitors", async ({
   await page
     .getByRole("combobox", { name: "Статус Isolated account", exact: true })
     .selectOption("Бан");
+  await expect(
+    page.getByRole("combobox", { name: "Статус Isolated account", exact: true }),
+  ).toBeEnabled();
   await page.locator("nav").getByRole("button", { name: "Журнал операций", exact: true }).click();
   await expect(
-    page.locator("section.panel h2").getByText("Журнал операций", { exact: true }),
+    page.getByRole("heading", { name: "Журнал операций", level: 2, exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Создан аккаунт", { exact: true })).toBeVisible();
   await expect(page.getByText("Изменён лимит", { exact: true })).toBeVisible();
@@ -81,10 +84,25 @@ test("accounts persist and are isolated between visitors", async ({
   await page.getByLabel("Тип события журнала", { exact: true }).selectOption("account");
   await expect(page.getByText("Изменена операция", { exact: true })).toHaveCount(0);
   await page.locator("nav").getByRole("button", { name: "Настройки", exact: true }).click();
-  await page.getByLabel("Новое имя для Демо", { exact: true }).fill("Демо фермер");
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
-  await expect(page.getByText("Переименован фармер", { exact: true })).toBeVisible();
+  const farmerRow = page.locator(".insight-row").filter({
+    has: page.getByLabel("Новое имя для Демо", { exact: true }),
+  });
+  await farmerRow.getByLabel("Новое имя для Демо", { exact: true }).fill("Демо фермер");
+  await farmerRow.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(page.getByLabel("Новое имя для Демо фермер", { exact: true })).toHaveValue("Демо фермер");
   await expect(page.getByText("Демо фермер", { exact: true })).toBeVisible();
+  await page.reload();
+  const savedAccount = page.getByRole("row").filter({
+    has: page.getByRole("button", { name: "Isolated account", exact: true }),
+  });
+  await expect(savedAccount.getByRole("cell", { name: "Демо фермер", exact: true })).toBeVisible();
+  await expect(savedAccount.getByRole("combobox")).toHaveValue("Бан");
+  await page.locator("nav").getByRole("button", { name: "Журнал операций", exact: true }).click();
+  const renameEvent = page.getByRole("row").filter({
+    has: page.getByRole("cell", { name: "Переименован фармер", exact: true }),
+  });
+  await expect(renameEvent).toHaveCount(1);
+  await expect(renameEvent.getByRole("cell", { name: "Демо → Демо фермер", exact: true })).toBeVisible();
   await page
     .locator("nav")
     .getByRole("button", { name: "Медиабаинг", exact: true })
